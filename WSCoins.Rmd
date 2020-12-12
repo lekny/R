@@ -1,0 +1,295 @@
+---
+title: "Web Scrapping - Crypto"
+output: html_notebook
+---
+
+
+#Criar dataframe com as colunas:
+#1- rank
+#2- symbol
+#3- price
+#4- var_hour
+#5- var_day
+#6- var_week
+
+#--- Package {rvest}        -> Web Scraping
+#--- Package {dplyr}        -> Operador PIPE "%>%" 
+#--- Package {stringr}      -> Manipula strings
+#--- Package {xlsx}         -> Exporta para Excel
+#--- Package {lubridate}    -> Data e Hora
+
+```{r}
+library(rvest)
+library(dplyr)
+library(stringr)
+library(xlsx)
+library(lubridate)
+library(tidyverse)
+library(readxl)
+```
+
+
+
+
+#--- Define a URL
+#--- Função read_html() na variavel "url" e atribui na variavel "top_coins"
+```{r}
+url <- "https://www.coingecko.com/pt"
+
+top_coins <- read_html(url)
+```
+
+
+
+#--- Cria variavel "symbol" a partir de "top_coins", condicionando pela função html_nodes(),
+#--- as tags e atributes relacionados as coins (inspecionar pagina)
+#--- Exibe como texto via função html_text()
+
+```{r}
+symbol <- top_coins %>% 
+  html_nodes("tbody tr td.py-0.coin-name") %>% 
+  html_text()
+```
+
+
+
+
+#--- Ajusta variavel "symbol" com as funções str_trim() e str_split("\n")
+```{r}
+symbol <- symbol %>% 
+    str_trim() %>% 
+    str_split("\n")
+```
+
+
+
+#--- COnforme verificado na etapa anterior, o simbolo do token encontra-se na 3a posição
+#--- Realiza o loop "lapply" criando a função "token" na qual aponta para a 3a posição
+#--- Ajusta com as funções unlist() e str_trim
+```{r}
+symbol <- lapply(symbol, function(token) {
+  token[3]
+}) %>% 
+  unlist() %>% 
+  str_trim()
+```
+
+
+
+
+
+
+#--- Extrai preço (price)
+```{r}
+price <- top_coins %>% 
+  html_nodes("tbody tr td.td-price.price.text-right") %>% 
+  html_text()
+```
+
+
+#--- Ajusta variavel "price" com as funções str_trim() e str_split("\n")
+```{r}
+price <- price %>% 
+    str_trim() %>% 
+    str_split("\n")
+```
+
+
+#--- COnforme verificado na etapa anterior, o simbolo do token encontra-se na 1a posição
+#--- Realiza o loop "lapply" criando a função "token" na qual aponta para a 1a posição
+#--- Ajusta com as funções unlist() e str_trim
+```{r}
+price <- lapply(price, function(token) {
+  token[1]
+}) %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  str_replace("\\$", "") %>% 
+  as.factor()
+
+```
+
+
+#--- Extrai variação de 1 hora (var_hour)
+```{r}
+var_hour <- top_coins %>% 
+  html_nodes("tbody tr td.td-change1h.change1h.stat-percent.text-right.col-market") %>% 
+  html_text()
+```
+
+
+#--- Ajusta variavel "var_hour" com as funções str_trim() e str_split("\n")
+```{r}
+var_hour <- var_hour %>% 
+    str_trim() %>% 
+    str_split("\n")
+```
+
+
+#--- COnforme verificado na etapa anterior, o valor de %1h encontra-se na 1a posição
+#--- Realiza o loop "lapply" criando a função "var_hour" na qual aponta para a 1a posição
+#--- Ajusta com as funções unlist() e str_trim
+```{r}
+var_hour <- lapply(var_hour, function(token) {
+  token[1]
+}) %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  str_replace("%", "") %>% 
+  as.double()
+
+```
+
+
+
+
+#--- Extrai variação de 24 horas (var_day)
+```{r}
+var_day <- top_coins %>% 
+  html_nodes("tbody tr td.td-change24h.change24h.stat-percent.text-right.col-market") %>% 
+  html_text()
+```
+
+
+
+#--- Ajusta variavel "var_day" com as funções str_trim() e str_split("\n")
+```{r}
+var_day <- var_day %>% 
+    str_trim() %>% 
+    str_split("\n")
+```
+
+
+
+#--- COnforme verificado na etapa anterior, o valor de %24h encontra-se na 1a posição
+#--- Realiza o loop "lapply" criando a função "var_day" na qual aponta para a 1a posição
+#--- Ajusta com as funções unlist() e str_trim
+```{r}
+var_day <- lapply(var_day, function(token) {
+  token[1]
+}) %>% 
+  unlist() %>% 
+  str_trim() %>%   
+  str_replace("%", "") %>% 
+  as.double()
+
+```
+
+
+
+
+
+#--- Extrai variação de 7 dias (var_week)
+```{r}
+var_week <- top_coins %>% 
+  html_nodes("tbody tr td.td-change7d.change7d.stat-percent.text-right.col-market") %>% 
+  html_text()
+```
+
+#--- Ajusta variavel "var_week" com as funções str_trim() e str_split("\n")
+```{r}
+var_week <- var_week %>% 
+    str_trim() %>% 
+    str_split("\n")
+```
+
+#--- COnforme verificado na etapa anterior, o valor de % 7 dias encontra-se na 1a posição
+#--- Realiza o loop "lapply" criando a função "var_week" na qual aponta para a 1a posição
+#--- Ajusta com as funções unlist() e str_trim
+```{r}
+var_week <- lapply(var_week, function(token) {
+  token[1]
+}) %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  str_replace("%", "") %>% 
+  as.double()
+  
+```
+
+
+
+#--- Cria ranking de 1 a 100 na variavel "rank"
+```{r}
+rank <- 1:100
+```
+
+
+
+#--- Define a variavel "time" com a função now(), converte para char e substitui ":" por "-"
+```{r}
+time <- now()
+time <- as.character(time) 
+time <- str_replace_all(time, ":","-")
+```
+
+
+
+
+#--- Cria o dataframe "top_coins"
+
+```{r}
+top_coins <- tibble(
+  Rank = rank,
+  Token = symbol,
+  Price = price,
+  Hour_Var = var_hour,
+  Day_Var = var_day,
+  Week_var = var_week
+)
+
+```
+
+#--- Visualiza o dataframe "top_coins" criado 
+```{r}
+print(top_coins)
+```
+
+#--- Cria e exibe a variavel "tango" sendo ela a cripto com maior variação % na semana
+```{r}
+tango <- top_coins %>% 
+  slice(which.max(as.numeric(Week_var))) %>% 
+  print(tango)
+
+```
+
+#--- Cria e exibe a variavel "bravo" sendo ela as criptos com variação maior que 10% na semana
+```{r}
+bravo <- top_coins %>% 
+  filter(Week_var > 10) %>% 
+  arrange(desc(Week_var)) %>% 
+  print(bravo)
+  
+```
+
+#--- Adiciona coluna Data no data frame "bravo", sendo o valor = "time"
+```{r}
+bravo["Data"] <- time
+```
+
+
+
+
+
+#--- FECHAR O ARQUIVO ANTES DE EXECUTAR
+#--- Exporta o dataframe para arquivo xlsx
+#--- Acumula os dados em novas sheets - atributo append - com nome (data/hora) da variavel "time"
+```{r}
+write.xlsx(top_coins, "top_coins.xlsx", sheetName = time, append = TRUE)
+write.xlsx(bravo, "watchlist.xlsx", sheetName = time, append = TRUE)
+```
+
+
+#--- Cria dataset com o acumulado das sheets de watchlist.xlsx
+```{r}
+res_acumulado <- excel_sheets("watchlist.xlsx") %>% 
+  map_df(~read_xlsx("watchlist.xlsx",.))
+```
+
+
+#--- Exporta para XLSX em 1 unica tabela o acumulado de watchlist.xlsx
+```{r}
+write.xlsx(res_acumulado, "watchlistALPHA.xlsx", sheetName = time, append = TRUE)
+```
+
+
